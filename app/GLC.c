@@ -32,6 +32,20 @@ int isEmpty(Stack *s) {
     return s->top == -1;
 }
 
+//Função para atualizar a tabela
+void preencheTabela(ParsingTable *table, int size) {
+    char nonTerminal;
+    char production[MAX];
+
+    for (int i = 0; i < size; i++) {
+        scanf("%c", &nonTerminal);
+        table[i].nonTerminal = nonTerminal;
+
+        scanf("%s", production);
+        strcpy(table[i].production, production);
+    }
+}
+
 // Função para encontrar a produção na tabela de análise
 char* findProduction(ParsingTable table[], int size, char nonTerminal, char terminal) {
     for (int i = 0; i < size; i++) {
@@ -42,20 +56,11 @@ char* findProduction(ParsingTable table[], int size, char nonTerminal, char term
     return NULL;
 }
 
-int main() {
-    // Exemplo de tabela de análise
-    ParsingTable table[] = {
-        {'E', "TX"},
-        {'X', "+TX"},
-        {'X', "ε"},
-        {'T', "FY"},
-        {'Y', "*FY"},
-        {'Y', "ε"},
-        {'F', "(E)"},
-        {'F', "id"}
-    };
+int LL1Parser(ParsingTable table[], int size) {
+    char input[MAX];
+    printf("Digite a entrada a ser analisada (termine com $): ");
+    scanf("%s", input); //id+id*id$
 
-    char input[] = "id+id*id$";
     Stack stack;
     stack.top = -1;
 
@@ -71,7 +76,7 @@ int main() {
             pop(&stack);
             i++;
         } else if (top >= 'A' && top <= 'Z') {
-            char* production = findProduction(table, sizeof(table)/sizeof(table[0]), top, current);
+            char* production = findProduction(table, size, top, current);
             if (production) {
                 pop(&stack);
                 for (int j = strlen(production) - 1; j >= 0; j--) {
@@ -90,5 +95,36 @@ int main() {
     }
 
     printf("Entrada aceita\n");
+}
+
+int main() {
+    // Exemplo de tabela de análise
+    ParsingTable table[] = {
+        {'E', "TX"},
+        {'X', "+TX"},
+        {'X', "ε"},
+        {'T', "FY"},
+        {'Y', "*FY"},
+        {'Y', "ε"},
+        {'F', "(E)"},
+        {'F', "id"}
+    };
+    
+    char continua = 's';
+    while (continua == 's') {
+        char aux = 's';
+        printf("Deseja utilizar a última tabela? (s/n)\n");
+        scanf("%c", &aux);
+
+        if (aux=='n') {
+            preencheTabela(table, sizeof(table)/sizeof(table[0]));
+        }
+        
+        LL1Parser(table, sizeof(table)/sizeof(table[0]));
+
+        printf("\nDeseja analisar outra entrada? (s/n)\n");
+        scanf("%c", &continua);
+    }
+    
     return 0;
 }
