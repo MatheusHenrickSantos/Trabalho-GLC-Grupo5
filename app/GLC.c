@@ -46,6 +46,62 @@ void preencheTabela(ParsingTable *table, int size) {
     }
 }
 
+//Funções para remover recursões
+void removeIndirectRecursion(ParsingTable table[], int size) {
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < i; j++) {
+            if (table[i].production[0] == table[j].nonTerminal) {
+                char newProductions[MAX][MAX];
+                int newCount = 0;
+                for (int k = 0; k < size; k++) {
+                    if (table[k].nonTerminal == table[j].nonTerminal) {
+                        char newProduction[MAX];
+                        strcpy(newProduction, table[k].production);
+                        strcat(newProduction, table[i].production + 1);
+                        strcpy(newProductions[newCount++], newProduction);
+                    }
+                }
+                for (int k = 0; k < newCount; k++) {
+                    strcpy(table[size++].production, newProductions[k]);
+                }
+            }
+        }
+    }
+}
+
+void removeLeftRecursion(ParsingTable table[], int size) {
+    for (int i = 0; i < size; i++) {
+        char alpha[MAX][MAX], beta[MAX][MAX];
+        int alphaCount = 0, betaCount = 0;
+
+        for (int j = 0; j < size; j++) {
+            if (table[j].nonTerminal == table[i].nonTerminal) {
+                if (table[j].production[0] == table[i].nonTerminal) {
+                    strcpy(alpha[alphaCount++], table[j].production + 1);
+                } else {
+                    strcpy(beta[betaCount++], table[j].production);
+                }
+            }
+        }
+
+        if (alphaCount > 0) {
+            char newNonTerminal = table[i].nonTerminal + 1;
+            printf("%c -> ", table[i].nonTerminal);
+            for (int j = 0; j < betaCount; j++) {
+                printf("%s%c'", beta[j], newNonTerminal);
+                if (j < betaCount - 1) printf(" | ");
+            }
+            printf("\n");
+
+            printf("%c' -> ", newNonTerminal);
+            for (int j = 0; j < alphaCount; j++) {
+                printf("%s%c' | ", alpha[j], newNonTerminal);
+            }
+            printf("ε\n");
+        }
+    }
+}
+
 // Função para encontrar a produção na tabela de análise
 char* findProduction(ParsingTable table[], int size, char nonTerminal, char terminal) {
     for (int i = 0; i < size; i++) {
@@ -109,6 +165,7 @@ int main() {
         {'F', "(E)"},
         {'F', "id"}
     };
+    int size = sizeof(table) / sizeof(table[0]);
     
     char continua = 's';
     while (continua == 's') {
@@ -117,10 +174,14 @@ int main() {
         scanf("%c", &aux);
 
         if (aux=='n') {
-            preencheTabela(table, sizeof(table)/sizeof(table[0]));
+            preencheTabela(table, size);
+            size = sizeof(table) / sizeof(table[0]);
         }
+
+        removeIndirectRecursion(table, size);
+        removeLeftRecursion(table, size);
         
-        LL1Parser(table, sizeof(table)/sizeof(table[0]));
+        LL1Parser(table, size);
 
         printf("\nDeseja analisar outra entrada? (s/n)\n");
         scanf("%c", &continua);
