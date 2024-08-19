@@ -47,11 +47,11 @@ void printStack(Stack *stack) {
 }
 
 //Função para atualizar a tabela
-void preencheTabela(ParsingTable *table, int size) {
+void preencheTabela(ParsingTable *table, int *size) {
     char nonTerminal;
     char production[MAX];
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < *size; i++) {
         scanf(" %c", &nonTerminal);
         table[i].nonTerminal = nonTerminal;
 
@@ -61,84 +61,112 @@ void preencheTabela(ParsingTable *table, int size) {
 }
 
 //Funções para remover recursões
-void removeIndirectRecursion(ParsingTable *table, int size) {
-    int a;
+void printProductions(ParsingTable *table, int size) {
     for (int i = 0; i < size; i++) {
-        printf("I=%d\n", i);
-        for (int j = 0; j < i; j++) {
-            printf("J=%d\n", j);
-            scanf("%d", &a);
-            if (table[i].production[0] == table[j].nonTerminal) {
-                char newProductions[MAX][MAX];
-                int newCount = 0;
-                for (int k = 0; k < size; k++) {
-                    printf("K=%d\n", k);
-                    if (table[k].nonTerminal == table[j].nonTerminal) {
-                        char newProduction[MAX];
-                        strcpy(newProduction, table[k].production);
-                        strcat(newProduction, table[i].production + 1);
-                        strcpy(newProductions[newCount++], newProduction);
-                        //strcpy(table[j].production, newProduction);
-                        printf("%s\n", table[newCount].production);
-                    }
-                }
-                for (int k = 0; k < newCount; k++) {
-                    strcpy(table[size++].production, newProductions[k]);
-                }
+        printf("%c -> %s\n", table[i].nonTerminal, table[i].production);
+    }
+}
+
+void inverterString(char *str) {
+    int i, j;
+    char temp;
+    int len = strlen(str);
+
+    for (i = 0, j = len - 1; i < j; i++, j--) {
+        temp = str[i];
+        str[i] = str[j];
+        str[j] = temp;
+    }
+}
+
+void removeDirectRecursion(ParsingTable *table, int *size) {
+    //Essa função vai criar uma nova produção ε e inverter a produção de todo não-terminal que tiver uma recursão direta 
+    for (int i = 0; i < *size; i++) {
+        if (table[i].nonTerminal == table[i].production[0]) {
+            ParsingTable currentNonTerminal;
+            currentNonTerminal.nonTerminal = table[i].nonTerminal;
+            strcpy(currentNonTerminal.production, "_");
+            inverterString(table[i].production);
+            printf("%c\t%s\t%s\n", currentNonTerminal.nonTerminal,currentNonTerminal.production,table[i].production);
+            table[*size]=currentNonTerminal;
+            printf("%c\t%s", table[*size].nonTerminal, table[i].production);
+            (*size)++;
+        }
+    }
+}
+
+// Função para buscar o índice na tabela onde a produção começa com um caractere específico
+int busca_indice_comeco(ParsingTable tabela[], int tamanho, char inicio) {
+    for (int i = 0; i < tamanho; i++) {
+        if (tabela[i].production[0] == inicio) {
+            return i;
+        }
+    }
+    return -1; // Se não encontrar, retorna -1
+}
+
+void sortProductions(ParsingTable *productions, int size) {
+    for (int i = 0; i < size - 1; i++) {
+        for (int j = i + 1; j < size; j++) {
+            if (productions[i].nonTerminal > productions[j].nonTerminal) {
+                ParsingTable temp = productions[i];
+                productions[i] = productions[j];
+                productions[j] = temp;
             }
         }
     }
 }
 
-void removeLeftRecursion(ParsingTable *table, int size) {
-    for (int i = 0; i < size; i++) {
-        char alpha[MAX][MAX], beta[MAX][MAX];
-        int alphaCount = 0, betaCount = 0;
-
-        for (int j = 0; j < size; j++) {
-            if (table[j].nonTerminal == table[i].nonTerminal) {
-                if (table[j].production[0] == table[i].nonTerminal) {
-                    strcpy(alpha[alphaCount++], table[j].production + 1);
-                } else {
-                    strcpy(beta[betaCount++], table[j].production);
-                }
+void removeIndirectRecursion(ParsingTable *table, int *size) {
+    ParsingTable auxTable[MAX];
+    int tamanho = *size, isRecursive=0;
+    int NonTermComMaisDeUmaProducao[MAX] = {0};
+    memcpy(auxTable, table, (tamanho) * sizeof(ParsingTable));
+    
+    //Verifica se possui recursão indireta
+    for (int i = 0; i < *size; i++) {
+        for (int j = 0; j < i; j++) {
+            if (table[i].production[0] == table[j].nonTerminal) {
+                isRecursive = 1;
             }
-        }
-
-        if (alphaCount > 0) {
-            char newNonTerminal = table[i].nonTerminal + 1;
-            printf("%c -> ", table[i].nonTerminal);
-            for (int j = 0; j < betaCount; j++) {
-                printf("%s%c'", beta[j], newNonTerminal);
-                if (j < betaCount - 1) printf(" | ");
-            }
-            printf("\n");
-
-            printf("%c' -> ", newNonTerminal);
-            for (int j = 0; j < alphaCount; j++) {
-                printf("%s%c' | ", alpha[j], newNonTerminal);
-            }
-            printf("ε\n");
         }
     }
+
+    //Subtitui os não-terminais nas produções que estão na recursão
+    if (isRecursive==1) {
+        for (int i = 0; i < tamanho; i++) {
+            char termo_atual = auxTable[i].nonTerminal;
+            int indice_substituicao = busca_indice_comeco(auxTable, tamanho, termo_atual);
+            NonTermComMaisDeUmaProducao[indice_substituicao] = 1;
+            if (indice_substituicao != -1) {
+                auxTable[i].nonTerminal = table[indice_substituicao].nonTerminal;
+                strcpy(auxTable[i].production, table[i].production);
+                strcat(auxTable[i].production, table[indice_substituicao].production + 1);
+            }
+        }
+    }
+    sortProductions(auxTable, *size);
+    memcpy(table, auxTable, *size * sizeof(ParsingTable));
 }
 
 // Função para encontrar a produção na tabela de análise
 char* findProduction(ParsingTable *table, int size, char nonTerminal, char terminal) {
     char *production = "";
+    //Percorre a tabela procurando uma produção que corresponda ao não-terminal e ao terminal fornecidos
     for (int i = 0; i < size; i++) {
-        //printf("%c = %c\t", table[i].nonTerminal, nonTerminal);
-        //printf("%c = %c\n", table[i].production[0], terminal);
         if (table[i].nonTerminal == nonTerminal && table[i].production[0] == terminal) {
             return table[i].production;
         }
     }
+    //Se não encontrou, significa que a não existe uma produção que corresponda ao não-terminal e ao símbolo atual da entrada
     for (int i = 0; i < size; i++) {
+        //Para cada produção que o não terminal seja igual ao topo
         if (table[i].nonTerminal == nonTerminal) {
-            //printf("p: |%s|\n", production);
+            //Se a produção está vazia, recebe a produção atual
             if (strcmp(production,"")==0) {
                 production = table[i].production;
             } else {
+                //Se não, dá preferencia pelo ε
                 if (production[0] != EPSILON) {
                     production = "_";
                 }
@@ -164,37 +192,34 @@ int LL1Parser(ParsingTable *table, int size) {
     while (!isEmpty(&stack)) {
         char top = peek(&stack);
         char current = input[i];
+
+        //Se o topo e o símbolo atual da entrada forem iguais, remove o topo da pilha e avança na entrada
         if (top == current) {
             pop(&stack);
             printStack(&stack);
-            //scanf("%d", &pausa);
             i++;
         } else {
             if (top >= 'A' && top <= 'Z') {
                 char* production = findProduction(table, size, top, current);
                 printf("Producao: %c -> %s\n",top, production);
                 if (production) {
+                    //Se encontrou a produção remove o não-terminal do topo da pilha
                     pop(&stack);
                     for (int j = strlen(production) - 1; j >= 0; j--) {
                         if (production[j] != EPSILON) {
+                            // e empilha em ordem inversa, se não for ε
                             push(&stack, production[j]);
                         }
                     }
                     printStack(&stack);
-                    //scanf("%d", &pausa);
                 }
             } else {
                 printf("Erro de sintaxe\n");
                 return 1;
             }
         }
-        //scanf("%d", &pausa);
-
     }
-
     printf("Entrada aceita\n");
-    //scanf("%d", &pausa);
-
     return 0;
 }
 
@@ -213,26 +238,25 @@ int main() {
     int size = sizeof(table) / sizeof(table[0]);
     
     printf("Tabela de Analise\n");
-    for (int i = 0; i < size; i++) {
-        printf(" %c -> %s\n", table[i].nonTerminal, table[i].production);
-    }
-    printf("\n");
+    printProductions(table, size);
     
     char continua = 's';
     while (continua == 's') {
         char aux = 's';
-        /*printf("Deseja utilizar a ultima tabela? (s/n)\n");
-        scanf("%c", &aux);
+        printf("Deseja utilizar a ultima tabela? (s/n)\n");
+        scanf(" %c", &aux);
 
         if (aux=='n') {
             printf("Quantas producoes tem a sua gramatica?\n");
             scanf("%d", &size);
             printf("Escreva as producoes:\n");
-            preencheTabela(table, size);
-            removeIndirectRecursion(table, size);
-            //removeLeftRecursion(table, size);
-            printf("%c -> %s\n", table[2].nonTerminal, table[2].production);
-        }*/
+            preencheTabela(table, &size);
+            removeIndirectRecursion(table, &size);
+            removeDirectRecursion(table, &size);
+
+            printf("\nSua nova tabela de analise:\n");
+            printProductions(table, size);
+        }
         
         LL1Parser(table, size);
 
@@ -242,8 +266,3 @@ int main() {
     
     return 0;
 }
-/*
-A Ba
-B Cd
-C Af
-*/
