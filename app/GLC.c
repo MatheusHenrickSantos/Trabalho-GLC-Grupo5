@@ -87,9 +87,7 @@ void removeDirectRecursion(ParsingTable *table, int *size) {
             currentNonTerminal.nonTerminal = table[i].nonTerminal;
             strcpy(currentNonTerminal.production, "_");
             inverterString(table[i].production);
-            printf("%c\t%s\t%s\n", currentNonTerminal.nonTerminal,currentNonTerminal.production,table[i].production);
             table[*size]=currentNonTerminal;
-            printf("%c\t%s", table[*size].nonTerminal, table[i].production);
             (*size)++;
         }
     }
@@ -120,7 +118,7 @@ void sortProductions(ParsingTable *productions, int size) {
 void removeIndirectRecursion(ParsingTable *table, int *size) {
     ParsingTable auxTable[MAX];
     int tamanho = *size, isRecursive=0;
-    int NonTermComMaisDeUmaProducao[MAX] = {0};
+    int NonTermDuplicado[MAX] = {0};
     memcpy(auxTable, table, (tamanho) * sizeof(ParsingTable));
     
     //Verifica se possui recursão indireta
@@ -137,7 +135,7 @@ void removeIndirectRecursion(ParsingTable *table, int *size) {
         for (int i = 0; i < tamanho; i++) {
             char termo_atual = auxTable[i].nonTerminal;
             int indice_substituicao = busca_indice_comeco(auxTable, tamanho, termo_atual);
-            NonTermComMaisDeUmaProducao[indice_substituicao] = 1;
+            NonTermDuplicado[indice_substituicao] = 1;
             if (indice_substituicao != -1) {
                 auxTable[i].nonTerminal = table[indice_substituicao].nonTerminal;
                 strcpy(auxTable[i].production, table[i].production);
@@ -145,6 +143,15 @@ void removeIndirectRecursion(ParsingTable *table, int *size) {
             }
         }
     }
+    
+    for (int i = 0; i < *size; i++) {
+        if (NonTermDuplicado[i] == 0) {
+            auxTable[tamanho].nonTerminal = table[i].nonTerminal;
+            strcpy(auxTable[tamanho++].production, table[i].production);
+        }
+    }
+    (*size) = tamanho;
+
     sortProductions(auxTable, *size);
     memcpy(table, auxTable, *size * sizeof(ParsingTable));
 }
